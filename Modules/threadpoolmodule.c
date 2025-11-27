@@ -1,7 +1,5 @@
 /*
- * Support for Windows Thread Pool API - Simplified Version
- * 
- * This version doesn't use Argument Clinic for easier debugging
+ * Support for Windows Thread Pool API
  */
 
 #ifndef Py_BUILD_CORE_BUILTIN
@@ -378,48 +376,55 @@ static PyMethodDef threadpool_functions[] = {
     {NULL}
 };
 
-static struct PyModuleDef threadpool_module = {
-    PyModuleDef_HEAD_INIT,
-    "_threadpool",
-    "Windows Thread Pool API support",
-    -1,
-    threadpool_functions
-};
-
-PyMODINIT_FUNC
-PyInit__threadpool(void)
+static int
+threadpool_exec(PyObject *module)
 {
-    PyObject *module;
-    
     // Initialize type objects
     if (PyType_Ready(&ThreadPoolType_def) < 0)
-        return NULL;
+        return -1;
     
     if (PyType_Ready(&WorkType_def) < 0)
-        return NULL;
-    
-    module = PyModule_Create(&threadpool_module);
-    if (module == NULL)
-        return NULL;
+        return -1;
     
     // Add types to module
     Py_INCREF(&ThreadPoolType_def);
     if (PyModule_AddObject(module, "ThreadPool", (PyObject *)&ThreadPoolType_def) < 0) {
         Py_DECREF(&ThreadPoolType_def);
-        Py_DECREF(module);
-        return NULL;
+        return -1;
     }
     
     Py_INCREF(&WorkType_def);
     if (PyModule_AddObject(module, "Work", (PyObject *)&WorkType_def) < 0) {
         Py_DECREF(&WorkType_def);
-        Py_DECREF(module);
-        return NULL;
+        return -1;
     }
     
     // Set global references for type checking
     ThreadPoolType = &ThreadPoolType_def;
     WorkType = &WorkType_def;
     
-    return module;
-} 
+    return 0;
+}
+
+static PyModuleDef_Slot threadpool_slots[] = {
+    {Py_mod_exec, threadpool_exec},
+#ifdef Py_MOD_GIL_NOT_USED
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+#endif
+    {0, NULL}
+};
+
+static struct PyModuleDef threadpool_module = {
+    PyModuleDef_HEAD_INIT,
+    "_threadpool",
+    "Windows Thread Pool API support",
+    0,
+    threadpool_functions,
+    threadpool_slots,
+};
+
+PyMODINIT_FUNC
+PyInit__threadpool(void)
+{
+    return PyModuleDef_Init(&threadpool_module);
+}
